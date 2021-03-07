@@ -33,7 +33,7 @@ setup(
     version=version,
     description='A script for backing up message history from Slack',
     long_description=long_description,
-    url='https://github.com/alexwlchan/backup-slack',
+    url='https://github.com/KrystianD/backup-slack',
     author='Alex Chan',
     author_email='alex@alexwlchan.net',
     license='MIT',

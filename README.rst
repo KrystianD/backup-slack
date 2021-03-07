@@ -22,13 +22,13 @@ To install this script, use pip:
 
 .. code-block:: console
 
-   $ pip install -e git+git://github.com/alexwlchan/backup-slack.git#egg=backup_slack
+   $ pip install -e git+git://github.com/KrystianD/backup-slack.git#egg=backup_slack
 
 or `pipsi <https://github.com/mitsuhiko/pipsi>`_:
 
 .. code-block:: console
 
-   $ pipsi install -e git+git://github.com/alexwlchan/backup-slack.git#egg=backup_slack
+   $ pipsi install -e git+git://github.com/KrystianD/backup-slack.git#egg=backup_slack
 
 You can use Python 2.7 and Python 3.3+.
 
@@ -43,7 +43,7 @@ You run the tool on the command-line, passing a `Slack API token
    $ backup_slack --token='abcdef'
 
 This saves a series of JSON files to the current directory.  To see other
-options, run with the ``--help`` flag: 
+options, run with the ``--help`` flag:
 
 .. code-block:: console
 
