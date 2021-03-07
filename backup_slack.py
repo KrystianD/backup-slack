@@ -10,10 +10,10 @@ import os
 import sys
 import time
 
-import slacker
 from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 
 
 USERNAMES = 'users.json'
@@ -122,18 +122,17 @@ class SlackHistory(object):
     """
 
     def __init__(self, token):
-        self.slack = slacker.Slacker(token=token)
         self.client = WebClient(token=token)
 
         # Check the token is valid
         try:
-            self.slack.auth.test()
-        except slacker.Error:
+            self.client.auth_test()
+        except SlackApiError:
             raise AuthenticationError('Unable to authenticate API token.')
 
         self.usernames = self._fetch_user_mapping()
 
-    def _get_history(self, channel_class, channel_id):
+    def _get_history(self, channel_id):
         """Returns the message history for a channel, group or DM thread.
         Newest messages are returned first.
         """
@@ -169,7 +168,7 @@ class SlackHistory(object):
         """Gets a mapping of user IDs to usernames."""
         return {
             u['id']: u['name']
-            for u in self.slack.users.list().body['members']}
+            for u in self.client.users_list().data['members']}
 
     def channels(self):
         """Returns a list of public channels."""
@@ -177,7 +176,7 @@ class SlackHistory(object):
 
     def channel_history(self, channel):
         """Returns the message history for a channel."""
-        return self._get_history(self.slack.channels, channel_id=channel['id'])
+        return self._get_history(channel_id=channel['id'])
 
     def private_channels(self):
         """Returns a list of private channels."""
@@ -185,7 +184,7 @@ class SlackHistory(object):
 
     def private_channel_history(self, channel):
         """Returns the message history for a private channel."""
-        return self._get_history(self.slack.groups, channel_id=channel['id'])
+        return self._get_history(channel_id=channel['id'])
 
     def dm_threads(self):
         """Returns a list of direct message threads."""
@@ -197,7 +196,7 @@ class SlackHistory(object):
 
     def dm_thread_history(self, thread):
         """Returns the message history for a direct message thread."""
-        return self._get_history(self.slack.im, channel_id=thread['id'])
+        return self._get_history(channel_id=thread['id'])
 
 
 def parse_args(prog, version):
