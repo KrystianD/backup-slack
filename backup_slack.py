@@ -11,9 +11,9 @@ import sys
 import time
 
 import slacker
+from slack_sdk import WebClient
 
-
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 
 USERNAMES = 'users.json'
@@ -50,14 +50,10 @@ def download_history(channel_info, history, path):
     except (IOError, OSError):
         existing_messages = []
 
-    # TODO: For convenience, the messages yielded from `history` usually
-    # have more than just the raw Slack API response: in particular, they have
-    # a username and a date string.  If the username and/or timestamp format
-    # changes, we could inadvertently save duplicate messages.
+    existing_messages_ts = {x["ts"] for x in existing_messages}
     for msg in history:
-        if msg in existing_messages:
-            break
-        existing_messages.append(msg)
+        if msg["ts"] not in existing_messages_ts:
+            existing_messages.append(msg)
 
     # Newest messages appear at the top of the file
     existing_messages = sorted(existing_messages,
@@ -127,6 +123,7 @@ class SlackHistory(object):
 
     def __init__(self, token):
         self.slack = slacker.Slacker(token=token)
+        self.client = WebClient(token=token)
 
         # Check the token is valid
         try:
@@ -151,11 +148,11 @@ class SlackHistory(object):
         # if they already have a copy of those locally.
         last_timestamp = None
         while True:
-            response = channel_class.history(channel=channel_id,
-                                             latest=last_timestamp,
-                                             oldest=0,
-                                             count=1000)
-            for msg in sorted(response.body['messages'],
+            response = self.client.conversations_history(channel=channel_id,
+                                                         latest=last_timestamp,
+                                                         oldest=0,
+                                                         count=1000)
+            for msg in sorted(response.data['messages'],
                               key=operator.itemgetter('ts'),
                               reverse=True):
                 last_timestamp = msg['ts']
@@ -165,7 +162,7 @@ class SlackHistory(object):
                 except KeyError:  # bot users
                     pass
                 yield msg
-            if not response.body['has_more']:
+            if not response.data['has_more']:
                 return
 
     def _fetch_user_mapping(self):
@@ -176,7 +173,7 @@ class SlackHistory(object):
 
     def channels(self):
         """Returns a list of public channels."""
-        return self.slack.channels.list().body['channels']
+        return self.client.conversations_list(types="public_channel").data['channels']
 
     def channel_history(self, channel):
         """Returns the message history for a channel."""
@@ -184,7 +181,7 @@ class SlackHistory(object):
 
     def private_channels(self):
         """Returns a list of private channels."""
-        return self.slack.groups.list().body['groups']
+        return self.client.conversations_list(types="private_channel,mpim").data['channels']
 
     def private_channel_history(self, channel):
         """Returns the message history for a private channel."""
@@ -193,7 +190,7 @@ class SlackHistory(object):
     def dm_threads(self):
         """Returns a list of direct message threads."""
         threads = []
-        for t in self.slack.im.list().body['ims']:
+        for t in self.client.conversations_list(types="im").data['channels']:
             t['username'] = self.usernames[t['user']]
             threads.append(t)
         return threads

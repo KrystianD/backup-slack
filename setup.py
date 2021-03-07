@@ -50,6 +50,7 @@ setup(
     ],
     install_requires=[
         'slacker>=0.9.30, <1',
+        'slack_sdk>=3.4.0',
     ],
     entry_points={
         'console_scripts': [
