@@ -1,11 +1,6 @@
-**Notice:** I'm not currently using or maintaining this code.
+Credits to the original author - `alexwlchan/backup-slack <https://github.com/alexwlchan/backup-slack>`_
 
-It worked when I last tried it in mid-2017, but there may be bugs or Slack API changes that cause issues.
-I don't have the time or energy to work on this right now – feel free to use the code, but any fixes will have to go in a fork.
-
-----
-
-slack_history
+backup-slack
 =============
 
 This is a tool for backing up your message history from Slack.
