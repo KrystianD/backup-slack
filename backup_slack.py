@@ -13,7 +13,7 @@ import time
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 
 USERNAMES = 'users.json'
@@ -172,7 +172,7 @@ class SlackHistory(object):
 
     def channels(self):
         """Returns a list of public channels."""
-        return self.client.conversations_list(types="public_channel").data['channels']
+        return self.client.conversations_list(types="public_channel", limit=1000).data['channels']
 
     def channel_history(self, channel):
         """Returns the message history for a channel."""
@@ -180,7 +180,7 @@ class SlackHistory(object):
 
     def private_channels(self):
         """Returns a list of private channels."""
-        return self.client.conversations_list(types="private_channel,mpim").data['channels']
+        return self.client.conversations_list(types="private_channel,mpim", limit=1000).data['channels']
 
     def private_channel_history(self, channel):
         """Returns the message history for a private channel."""
@@ -189,7 +189,7 @@ class SlackHistory(object):
     def dm_threads(self):
         """Returns a list of direct message threads."""
         threads = []
-        for t in self.client.conversations_list(types="im").data['channels']:
+        for t in self.client.conversations_list(types="im", limit=1000).data['channels']:
             t['username'] = self.usernames[t['user']]
             threads.append(t)
         return threads
