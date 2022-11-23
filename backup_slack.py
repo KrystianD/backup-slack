@@ -13,8 +13,7 @@ import time
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-__version__ = '1.1.2'
-
+__version__ = '1.1.3'
 
 USERNAMES = 'users.json'
 DIRECT_MESSAGES = 'direct_messages'
@@ -72,11 +71,13 @@ def download_public_channels(slack, outdir):
     """Download the message history for the public channels where this user
     is logged in.
     """
-    for channel in slack.channels():
-        if channel['is_member']:
-            history = slack.channel_history(channel=channel)
-            path = os.path.join(outdir, '%s.json' % channel['name'])
-            download_history(channel_info=channel, history=history, path=path)
+    channels = slack.channels()
+    channels = [x for x in channels if x["is_member"]]
+    for i, channel in enumerate(sorted(channels, key=lambda x: x["name"])):
+        print(f"Downloading {i + 1} of {len(channels)} ({channel['name']})...")
+        history = slack.channel_history(channel=channel)
+        path = os.path.join(outdir, '%s.json' % channel['name'])
+        download_history(channel_info=channel, history=history, path=path)
 
 
 def download_usernames(slack, path):
@@ -95,7 +96,9 @@ def download_usernames(slack, path):
 
 def download_dm_threads(slack, outdir):
     """Download the message history for this user's direct message threads."""
-    for thread in slack.dm_threads():
+    threads = slack.dm_threads()
+    for i, thread in enumerate(sorted(threads, key=lambda x: x["username"])):
+        print(f"Downloading {i + 1} of {len(threads)} ({thread['username']})...")
         history = slack.dm_thread_history(thread=thread)
         path = os.path.join(outdir, '%s.json' % thread['username'])
         download_history(channel_info=thread, history=history, path=path)
@@ -105,7 +108,9 @@ def download_private_channels(slack, outdir):
     """Download the message history for the private channels where this user
     is logged in.
     """
-    for thread in slack.private_channels():
+    threads = slack.private_channels()
+    for i, thread in enumerate(sorted(threads, key=lambda x: x["name"])):
+        print(f"Downloading {i + 1} of {len(threads)} ({thread['name']})...")
         history = slack.private_channel_history(channel=thread)
         path = os.path.join(outdir, '%s.json' % thread['name'])
         download_history(channel_info=thread, history=history, path=path)
