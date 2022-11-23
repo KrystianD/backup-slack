@@ -13,7 +13,7 @@ import time
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-__version__ = '1.1.3'
+__version__ = '1.1.4'
 
 USERNAMES = 'users.json'
 DIRECT_MESSAGES = 'direct_messages'
@@ -151,23 +151,33 @@ class SlackHistory(object):
         # API calls) if they turn out not to want older messages, for example,
         # if they already have a copy of those locally.
         last_timestamp = None
+        downloaded = 0
         while True:
-            response = self.client.conversations_history(channel=channel_id,
-                                                         latest=last_timestamp,
-                                                         oldest=0,
-                                                         count=1000)
-            for msg in sorted(response.data['messages'],
-                              key=operator.itemgetter('ts'),
-                              reverse=True):
-                last_timestamp = msg['ts']
-                msg['date'] = str(slack_ts_to_datetime(msg['ts']))
-                try:
-                    msg['username'] = self.usernames[msg['user']]
-                except KeyError:  # bot users
-                    pass
-                yield msg
-            if not response.data['has_more']:
-                return
+            try:
+                response = self.client.conversations_history(channel=channel_id,
+                                                             latest=last_timestamp,
+                                                             oldest=0,
+                                                             count=1000)
+                downloaded += len(response.data['messages'])
+                print(f"downloaded {downloaded} messages")
+                for msg in sorted(response.data['messages'],
+                                  key=operator.itemgetter('ts'),
+                                  reverse=True):
+                    last_timestamp = msg['ts']
+                    msg['date'] = str(slack_ts_to_datetime(msg['ts']))
+                    try:
+                        msg['username'] = self.usernames[msg['user']]
+                    except KeyError:  # bot users
+                        pass
+                    yield msg
+                if not response.data['has_more']:
+                    return
+            except SlackApiError as e:
+                if e.response["error"] == "ratelimited":
+                    print("rate limit hit, waiting...")
+                    time.sleep(5)
+                    continue
+                raise
 
     def _fetch_user_mapping(self):
         """Gets a mapping of user IDs to usernames."""
