@@ -13,7 +13,7 @@ import time
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-__version__ = '1.1.4'
+__version__ = '1.1.5'
 
 USERNAMES = 'users.json'
 DIRECT_MESSAGES = 'direct_messages'
@@ -157,7 +157,7 @@ class SlackHistory(object):
                 response = self.client.conversations_history(channel=channel_id,
                                                              latest=last_timestamp,
                                                              oldest=0,
-                                                             count=1000)
+                                                             count=100)
                 downloaded += len(response.data['messages'])
                 print(f"downloaded {downloaded} messages")
                 for msg in sorted(response.data['messages'],
