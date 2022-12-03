@@ -10,8 +10,8 @@ channels and direct message threads, and save them as a JSON file.
 (The `data exports <https://get.slack.help/hc/en-us/articles/204897248>`_
 provided by Slack only include messages sent in public channels.)
 If you're using one of the paid tiers, this retrieves your complete
-history.  For the free tiers, only the last 10,000 messages are accessible
-through the Slack API.
+history (unless `--incremental` flag is added).
+For the free tiers, only the last 10,000 messages are accessible through the Slack API.
 
 *This tool is not created by, affiliated with, or supported by Slack Technologies, Inc.*
 

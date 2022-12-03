@@ -12,7 +12,7 @@ import time
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-__version__ = '1.1.6'
+__version__ = '1.2.0'
 
 USERNAMES = 'users.json'
 DIRECT_MESSAGES = 'direct_messages'
@@ -28,6 +28,15 @@ def slack_ts_to_datetime(ts):
     """Try to convert a 'ts' value from the Slack into a UTC datetime."""
     time_struct = time.localtime(float(ts))
     return datetime.datetime.fromtimestamp(time.mktime(time_struct))
+
+
+def get_latest_message_ts(path):
+    if os.path.exists(path):
+        with open(path) as infile:
+            messages = json.load(infile)['messages']
+        if len(messages) > 0:
+            return max(x["ts"] for x in messages)
+    return 0
 
 
 def download_history(channel_info, history, path):
@@ -57,7 +66,7 @@ def download_history(channel_info, history, path):
         outfile.write(json_str)
 
 
-def download_public_channels(slack, outdir):
+def download_public_channels(slack, outdir, incremental):
     """Download the message history for the public channels where this user
     is logged in.
     """
@@ -65,8 +74,8 @@ def download_public_channels(slack, outdir):
     channels = [x for x in channels if x["is_member"]]
     for i, channel in enumerate(sorted(channels, key=lambda x: x["name"])):
         print(f"Downloading {i + 1} of {len(channels)} ({channel['name']})...")
-        history = slack.channel_history(channel=channel)
         path = os.path.join(outdir, '%s.json' % channel['name'])
+        history = slack.channel_history(channel=channel, last_ts=get_latest_message_ts(path) if incremental else 0)
         download_history(channel_info=channel, history=history, path=path)
 
 
@@ -84,25 +93,26 @@ def download_usernames(slack, path):
         outfile.write(json_str)
 
 
-def download_dm_threads(slack, outdir):
+def download_dm_threads(slack, outdir, incremental):
     """Download the message history for this user's direct message threads."""
     threads = slack.dm_threads()
     for i, thread in enumerate(sorted(threads, key=lambda x: x["username"])):
         print(f"Downloading {i + 1} of {len(threads)} ({thread['username']})...")
-        history = slack.dm_thread_history(thread=thread)
         path = os.path.join(outdir, '%s.json' % thread['username'])
+        history = slack.dm_thread_history(thread=thread, last_ts=get_latest_message_ts(path) if incremental else 0)
         download_history(channel_info=thread, history=history, path=path)
 
 
-def download_private_channels(slack, outdir):
+def download_private_channels(slack, outdir, incremental):
     """Download the message history for the private channels where this user
     is logged in.
     """
     threads = slack.private_channels()
     for i, thread in enumerate(sorted(threads, key=lambda x: x["name"])):
         print(f"Downloading {i + 1} of {len(threads)} ({thread['name']})...")
-        history = slack.private_channel_history(channel=thread)
         path = os.path.join(outdir, '%s.json' % thread['name'])
+        history = slack.private_channel_history(channel=thread,
+                                                last_ts=get_latest_message_ts(path) if incremental else 0)
         download_history(channel_info=thread, history=history, path=path)
 
 
@@ -127,7 +137,7 @@ class SlackHistory(object):
 
         self.usernames = self._fetch_user_mapping()
 
-    def _get_history(self, channel_id):
+    def _get_history(self, channel_id, last_ts):
         """Returns the message history for a channel, group or DM thread.
         Newest messages are returned first.
         """
@@ -146,7 +156,7 @@ class SlackHistory(object):
             try:
                 response = self.client.conversations_history(channel=channel_id,
                                                              latest=last_timestamp,
-                                                             oldest=0,
+                                                             oldest=last_ts,
                                                              count=100)
                 downloaded += len(response.data['messages'])
                 print(f"downloaded {downloaded} messages")
@@ -179,17 +189,17 @@ class SlackHistory(object):
         """Returns a list of public channels."""
         return self.client.conversations_list(types="public_channel", limit=1000).data['channels']
 
-    def channel_history(self, channel):
+    def channel_history(self, channel, last_ts):
         """Returns the message history for a channel."""
-        return self._get_history(channel_id=channel['id'])
+        return self._get_history(channel_id=channel['id'], last_ts=last_ts)
 
     def private_channels(self):
         """Returns a list of private channels."""
         return self.client.conversations_list(types="private_channel,mpim", limit=1000).data['channels']
 
-    def private_channel_history(self, channel):
+    def private_channel_history(self, channel, last_ts):
         """Returns the message history for a private channel."""
-        return self._get_history(channel_id=channel['id'])
+        return self._get_history(channel_id=channel['id'], last_ts=last_ts)
 
     def dm_threads(self):
         """Returns a list of direct message threads."""
@@ -199,9 +209,9 @@ class SlackHistory(object):
             threads.append(t)
         return threads
 
-    def dm_thread_history(self, thread):
+    def dm_thread_history(self, thread, last_ts):
         """Returns the message history for a direct message thread."""
-        return self._get_history(channel_id=thread['id'])
+        return self._get_history(channel_id=thread['id'], last_ts=last_ts)
 
 
 def parse_args(prog, version):
@@ -222,6 +232,9 @@ def parse_args(prog, version):
     parser.add_argument(
         '--token', required=True,
         help='Slack API token; obtain from https://api.slack.com/web')
+    parser.add_argument(
+        '--incremental', required=False, action='store_true',
+        help='Download only newer messages')
 
     return parser.parse_args()
 
@@ -242,15 +255,15 @@ def main():
 
     public_channels = os.path.join(args.outdir, PUBLIC_CHANNELS)
     print('Saving public channels to %s' % public_channels)
-    download_public_channels(slack, outdir=public_channels)
+    download_public_channels(slack, outdir=public_channels, incremental=args.incremental)
 
     private_channels = os.path.join(args.outdir, PRIVATE_CHANNELS)
     print('Saving private channels to %s' % private_channels)
-    download_private_channels(slack, outdir=private_channels)
+    download_private_channels(slack, outdir=private_channels, incremental=args.incremental)
 
     direct_messages = os.path.join(args.outdir, DIRECT_MESSAGES)
     print('Saving direct messages to %s' % direct_messages)
-    download_dm_threads(slack, outdir=direct_messages)
+    download_dm_threads(slack, outdir=direct_messages, incremental=args.incremental)
 
 
 if __name__ == '__main__':
