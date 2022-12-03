@@ -3,7 +3,6 @@
 
 import argparse
 import datetime
-import errno
 import json
 import operator
 import os
@@ -13,7 +12,7 @@ import time
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-__version__ = '1.1.5'
+__version__ = '1.1.6'
 
 USERNAMES = 'users.json'
 DIRECT_MESSAGES = 'direct_messages'
@@ -43,10 +42,10 @@ def slack_ts_to_datetime(ts):
 def download_history(channel_info, history, path):
     """Download the message history and save it to a JSON file."""
     mkdir_p(os.path.dirname(path))
-    try:
+    if os.path.exists(path):
         with open(path) as infile:
             existing_messages = json.load(infile)['messages']
-    except (IOError, OSError):
+    else:
         existing_messages = []
 
     existing_messages_ts = {x["ts"] for x in existing_messages}
