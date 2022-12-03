@@ -21,16 +21,7 @@ PRIVATE_CHANNELS = 'private_channels'
 
 
 def mkdir_p(path):
-    """Create a directory if it does not already exist.
-    http://stackoverflow.com/a/600612/1558022
-    """
-    try:
-        os.makedirs(path)
-    except OSError as exc:  # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
+    os.makedirs(path, exist_ok=True)
 
 
 def slack_ts_to_datetime(ts):
